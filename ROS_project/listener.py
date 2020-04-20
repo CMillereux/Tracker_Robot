@@ -2,7 +2,6 @@
 import rospy
 import numpy as np
 from sensor_msgs.msg import LaserScan
-
 import actionlib
 from geometry_msgs.msg import Twist
 import sys
@@ -37,8 +36,11 @@ BURGER_MAX_ANG_VEL = 2.84
 WAFFLE_MAX_LIN_VEL = 0.26
 WAFFLE_MAX_ANG_VEL = 1.82
 
-LIN_VEL_STEP_SIZE = 0.01
+LIN_VEL_STEP_SIZE = 0.05
 ANG_VEL_STEP_SIZE = 0.1
+
+k_l = 1
+k_r = 1
 
 
 def vels(target_linear_vel, target_angular_vel):
@@ -59,78 +61,79 @@ def getKey():
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
     return key
 
+#fonction erreur-> donner un parametre 
 
-def erreur_x(data):
-    datax = []
-    angle_min = data.angle_min
-    angle_increment = data.angle_increment
-    for i in range(len(data.ranges)):
-        if np.isinf(data.ranges[i]):
-            # deleting useless value
-            None
+# def erreur_x(data):
+#     datax = []
+#     angle_min = data.angle_min
+#     angle_increment = data.angle_increment
+#     for i in range(len(data.ranges)):
+#         if np.isinf(data.ranges[i]):
+#             # deleting useless value
+#             None
 
-        else:
-            angle = angle_min + angle_increment * i
-            x = data.ranges[i] * np.cos(angle)
+#         else:
+#             angle = angle_min + angle_increment * i
+#             x = data.ranges[i] * np.cos(angle)
 
-            if x > 0.5 and x < 1:
-                datax.append(x)
+#             if x > 0.5 and x < 1:
+#                 datax.append(x)
 
-        x_moy = 0
+#         x_moy = 0
 
-        for i in range(len(datax)):
-            #        rospy.loginfo("x={}, y ={}".format(datax[i],datay[i]))
-            x_moy = x_moy + datax[i]
+#         for i in range(len(datax)):
+#             #        rospy.loginfo("x={}, y ={}".format(datax[i],datay[i]))
+#             x_moy = x_moy + datax[i]
 
-        if len(datax) != 0:
-            x_moy = x_moy / len(datax)
-            rospy.loginfo("x={}".format(x_moy))
-            # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
-            # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
-            error_x = 0.75 - x
-            # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
-            k_l = 1
-            k_r = 1
-        # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
-        else:
-            rospy.loginfo("item lost !!!!!")
-        return error_x
+#         if len(datax) != 0:
+#             x_moy = x_moy / len(datax)
+#             rospy.loginfo("x={}".format(x_moy))
+#             # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
+#             # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
+#             erreur_x = 0.75 + x_moy
+#             # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
+#             k_l = 1
+#         # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
+#         else:
+#             rospy.loginfo("item lost !!!!!")
+#         return erreur_x
 
 
-def erreur_y(data):
-    datay = []
-    angle_min = data.angle_min
-    angle_increment = data.angle_increment
-    for i in range(len(data.ranges)):
-        if np.isinf(data.ranges[i]):
-            # deleting useless value
-            None
+# def erreur_y(data):
+#     datay = []
+#     angle_min = data.angle_min
+#     angle_increment = data.angle_increment
+#     for i in range(len(data.ranges)):
+#         if np.isinf(data.ranges[i]):
+#             # deleting useless value
+#             None
 
-        else:
-            angle = angle_min + angle_increment * i
-            y = data.ranges[i] * np.sin(angle)
-            if y > -0.5 and y < 0.5:
-                datay.append(y)
-        y_moy = 0
-        for i in range(len(datay)):
-            #        rospy.loginfo("x={}, y ={}".format(datax[i],datay[i]))
-            y_moy = y_moy + datay[i]
-        if len(datay) != 0:
-            y_moy = y_moy / len(datay)
-            rospy.loginfo("y ={}".format(y_moy))
-            # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
-            # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
+#         else:
+#             angle = angle_min + angle_increment * i
+#             y = data.ranges[i] * np.sin(angle)
+#             if y > -0.5 and y < 0.5:
+#                 datay.append(y)
+#         y_moy = 0
+#         for i in range(len(datay)):
+#             #        rospy.loginfo("x={}, y ={}".format(datax[i],datay[i]))
+#             y_moy = y_moy + datay[i]
+#         if len(datay) != 0:
+#             y_moy = y_moy / len(datay)
+#             rospy.loginfo("y ={}".format(y_moy))
+#             # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
+#             # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
 
-            error_y = 0 - y  # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
-            k_l = 1
-            k_r = 1
-        # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
-        else:
-            rospy.loginfo("item lost !!!!!")
-    return error_y
+#             erreur_y = 0 + y_moy  # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
+#             k_r = 1
+#         # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
+#         else:
+#             rospy.loginfo("item lost !!!!!")
+#     return erreur_y
 
 
 def callback(data):
+    erreur_x = 0
+    erreur_y = 0
     datax = []
     datay = []
     angle_min = data.angle_min
@@ -140,7 +143,7 @@ def callback(data):
     for i in range(len(data.ranges)):
         if np.isinf(data.ranges[i]):
             # deleting useless value
-            None
+            pass
 
         else:
             angle = angle_min + angle_increment * i
@@ -161,13 +164,14 @@ def callback(data):
         rospy.loginfo("x={}, y ={}".format(x_moy, y_moy))
         # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
         # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
-        err_x = 0.75 - x
-        err_y = 0 - y  # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
+        erreur_x = x_moy - 0.60
+        erreur_y = y_moy - 0  # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
         k_l = 1
         k_r = 1
        # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
     else:
         rospy.loginfo("item lost !!!!!")
+    move(erreur_x, erreur_y)
 
 
 def constrain(input, low, high):
@@ -214,12 +218,12 @@ def makeSimpleProfile(output, input, slop):
     return output
 
 
-if __name__ == "__main__":
+def move(erreur_x, erreur_y):
+    
     if os.name != 'nt':
         settings = termios.tcgetattr(sys.stdin)
 
-    rospy.init_node('turtlebot3_teleop')
-    pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
+        pub = rospy.Publisher('cmd_vel', Twist, queue_size=10)
 
     turtlebot3_model = rospy.get_param("model", "burger")
 
@@ -230,26 +234,7 @@ if __name__ == "__main__":
     control_angular_vel = 0.0
 
     try:
-        print(msg)
-        while(1):
-            key = getKey()
-            if erreur_x > 0:
-                target_linear_vel = checkLinearLimitVelocity(target_linear_vel + LIN_VEL_STEP_SIZE)
-                status = status + 1
-                print(vels(target_linear_vel, target_angular_vel))
-            else:
-                target_linear_vel = checkLinearLimitVelocity(target_linear_vel - LIN_VEL_STEP_SIZE)
-                status = status + 1
-                print(vels(target_linear_vel, target_angular_vel))
-            
-            if erreur_y > 0:
-                target_angular_vel = checkAngularLimitVelocity(target_angular_vel + ANG_VEL_STEP_SIZE)
-                status = status + 1
-                print(vels(target_linear_vel, target_angular_vel))
-            else:
-                target_angular_vel = checkAngularLimitVelocity(target_angular_vel - ANG_VEL_STEP_SIZE)
-                status = status + 1
-                print(vels(target_linear_vel, target_angular_vel))
+    
             if erreur_x == 0:
                 target_linear_vel = 0.0
                 control_linear_vel = 0.0
@@ -258,8 +243,7 @@ if __name__ == "__main__":
                 control_angular_vel = 0.0
                 print(vels(target_linear_vel, target_angular_vel))
             else:
-                if (key == '\x03'):
-                    break
+                              
                 if status == 20:
                     print(msg)
                 status = 0
@@ -285,12 +269,12 @@ if __name__ == "__main__":
 
     finally:
         twist = Twist()
-        twist.linear.x = 0.0
+        twist.linear.x = erreur_x * k_l
         twist.linear.y = 0.0
         twist.linear.z = 0.0
         twist.angular.x = 0.0
         twist.angular.y = 0.0
-        twist.angular.z = 0.0
+        twist.angular.z = erreur_y * k_r
         pub.publish(twist)
 
     if os.name != 'nt':
