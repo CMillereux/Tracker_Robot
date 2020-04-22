@@ -149,7 +149,7 @@ def callback(data):
             angle = angle_min + angle_increment * i
             x = data.ranges[i] * np.cos(angle)
             y = data.ranges[i] * np.sin(angle)
-            if x > 0.5 and x < 1 and y > -0.5 and y < 0.5:
+            if x > 0.01 and x < 1 and y > -0.4 and y < 0.4:
                 datax.append(x)
                 datay.append(y)
     x_moy = 0
@@ -164,7 +164,7 @@ def callback(data):
         rospy.loginfo("x={}, y ={}".format(x_moy, y_moy))
         # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
         # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
-        erreur_x = x_moy - 0.60
+        erreur_x = x_moy - 0.3
         erreur_y = y_moy - 0  # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
         k_l = 1
         k_r = 1
