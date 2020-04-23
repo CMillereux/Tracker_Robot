@@ -79,7 +79,6 @@ def callback(data):
     global chrono_start
     global move
     move = simple_navigation_goals.SimpleNavigationGoals()
-    move.go_to (-3,1,0)
 #    rospy.loginfo(data.ranges)
     rospy.loginfo(len(data.ranges))
     for i in range(len(data.ranges)):
