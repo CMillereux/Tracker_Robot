@@ -112,7 +112,7 @@ def callback(data):
        # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
     else:
         rospy.loginfo("item lost !!!!!")
-    if erreur_x != 0.3:
+    if erreur_x > 0.28 and erreur_x < 0.32:
         chrono_start = rospy.Time.now()
     elif rospy.Time.now() - chrono_start >= rospy.Duration(3):
         move.go_to (-3,1,0)
