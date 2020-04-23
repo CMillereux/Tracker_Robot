@@ -11,6 +11,10 @@ import tty
 import termios
 if os.name == 'nt':
     import msvcrt
+import simple_navigation_goals
+from simple_navigation_goals import SimpleNavigationGoals
+
+
 
 msg = """
 Your TurtleBot3 is self controlled!
@@ -33,14 +37,17 @@ Communications Failed
 BURGER_MAX_LIN_VEL = 0.22
 BURGER_MAX_ANG_VEL = 2.84
 
-WAFFLE_MAX_LIN_VEL = 0.26
-WAFFLE_MAX_ANG_VEL = 1.82
+WAFFLE_MAX_LIN_VEL = 0.3
+WAFFLE_MAX_ANG_VEL = 2
 
 LIN_VEL_STEP_SIZE = 0.05
 ANG_VEL_STEP_SIZE = 0.1
 
 k_l = 1
 k_r = 1
+
+chrono_start = 0
+move = 0
 
 
 def vels(target_linear_vel, target_angular_vel):
@@ -61,75 +68,6 @@ def getKey():
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
     return key
 
-#fonction erreur-> donner un parametre 
-
-# def erreur_x(data):
-#     datax = []
-#     angle_min = data.angle_min
-#     angle_increment = data.angle_increment
-#     for i in range(len(data.ranges)):
-#         if np.isinf(data.ranges[i]):
-#             # deleting useless value
-#             None
-
-#         else:
-#             angle = angle_min + angle_increment * i
-#             x = data.ranges[i] * np.cos(angle)
-
-#             if x > 0.5 and x < 1:
-#                 datax.append(x)
-
-#         x_moy = 0
-
-#         for i in range(len(datax)):
-#             #        rospy.loginfo("x={}, y ={}".format(datax[i],datay[i]))
-#             x_moy = x_moy + datax[i]
-
-#         if len(datax) != 0:
-#             x_moy = x_moy / len(datax)
-#             rospy.loginfo("x={}".format(x_moy))
-#             # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
-#             # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
-#             erreur_x = 0.75 + x_moy
-#             # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
-#             k_l = 1
-#         # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
-#         else:
-#             rospy.loginfo("item lost !!!!!")
-#         return erreur_x
-
-
-# def erreur_y(data):
-#     datay = []
-#     angle_min = data.angle_min
-#     angle_increment = data.angle_increment
-#     for i in range(len(data.ranges)):
-#         if np.isinf(data.ranges[i]):
-#             # deleting useless value
-#             None
-
-#         else:
-#             angle = angle_min + angle_increment * i
-#             y = data.ranges[i] * np.sin(angle)
-#             if y > -0.5 and y < 0.5:
-#                 datay.append(y)
-#         y_moy = 0
-#         for i in range(len(datay)):
-#             #        rospy.loginfo("x={}, y ={}".format(datax[i],datay[i]))
-#             y_moy = y_moy + datay[i]
-#         if len(datay) != 0:
-#             y_moy = y_moy / len(datay)
-#             rospy.loginfo("y ={}".format(y_moy))
-#             # on veut ramener le baricentre vers la zone d'interet : x = 0.75 et y = 0
-#             # si erreur_x est positif on veut avancer et si erreur_x est negatif on veut reculer
-
-#             erreur_y = 0 + y_moy  # si erreur_y est positif il faut tourner vers la gauche et si erreur_y est negatif il faut tourner vers la droite
-#             k_r = 1
-#         # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
-#         else:
-#             rospy.loginfo("item lost !!!!!")
-#     return erreur_y
-
 
 def callback(data):
     erreur_x = 0
@@ -138,6 +76,10 @@ def callback(data):
     datay = []
     angle_min = data.angle_min
     angle_increment = data.angle_increment
+    global chrono_start
+    global move
+    move = simple_navigation_goals.SimpleNavigationGoals()
+    move.go_to (-3,1,0)
 #    rospy.loginfo(data.ranges)
     rospy.loginfo(len(data.ranges))
     for i in range(len(data.ranges)):
@@ -149,7 +91,7 @@ def callback(data):
             angle = angle_min + angle_increment * i
             x = data.ranges[i] * np.cos(angle)
             y = data.ranges[i] * np.sin(angle)
-            if x > 0.01 and x < 1 and y > -0.4 and y < 0.4:
+            if x > 0.01 and x < 0.7 and y > -0.45 and y < 0.45:
                 datax.append(x)
                 datay.append(y)
     x_moy = 0
@@ -171,7 +113,12 @@ def callback(data):
        # cmd_vel(erreur_x * k_l,erreur_y * k_r ) # to_do envoyer ces vitesses en s'inspirant du teleop_key
     else:
         rospy.loginfo("item lost !!!!!")
-    move(erreur_x, erreur_y)
+    if erreur_x != 0.3:
+        chrono_start = rospy.Time.now()
+    elif rospy.Time.now() - chrono_start >= rospy.Duration(3):
+        move.go_to (-3,1,0)
+    bouge(erreur_x, erreur_y)
+    
 
 
 def constrain(input, low, high):
@@ -218,7 +165,7 @@ def makeSimpleProfile(output, input, slop):
     return output
 
 
-def move(erreur_x, erreur_y):
+def bouge(erreur_x, erreur_y):
     
     if os.name != 'nt':
         settings = termios.tcgetattr(sys.stdin)
@@ -282,13 +229,17 @@ def move(erreur_x, erreur_y):
 
 
 def listener():
-
+    global chrono_start
+    
     # In ROS, nodes are uniquely named. If two nodes with the same
     # name are launched, the previous one is kicked off. The
     # anonymous=True flag means that rospy will choose a unique
     # name for our 'listener' node so that multiple listeners can
     # run simultaneously.
     rospy.init_node('listener', anonymous=True)
+    
+    chrono_start = rospy.Time.now()
+    
 
     rospy.Subscriber("/scan", LaserScan, callback)
 
